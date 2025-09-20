@@ -116,7 +116,32 @@ app.post("/lotto", async (req, res) => {
       return res.status(400).json({ message: "No reward found (ยังไม่มีงวด)" });
     }
 
-    // 2) ตรวจว่าเลขนี้มีอยู่แล้วในงวดล่าสุดหรือไม่
+    // 2) ตรวจสอบว่า งวดล่าสุดมีการออกรางวัลไปแล้วหรือยัง
+    const [rewardRows] = await db.query(
+      "SELECT CAST(reward_data AS CHAR) AS reward_data FROM reward WHERE reward_id = ?",
+      [reward_id]
+    );
+
+    if (!rewardRows.length) {
+      return res.status(404).json({ error: "ไม่พบข้อมูล reward" });
+    }
+
+    let rewardData;
+    try {
+      rewardData = JSON.parse(rewardRows[0].reward_data);
+    } catch (err) {
+      return res.status(500).json({ error: "reward_data format invalid" });
+    }
+
+    const alreadyDrawn = rewardData.some(
+      (r) => r.winning !== null && r.winning !== undefined && String(r.winning).trim() !== ""
+    );
+
+    if (alreadyDrawn) {
+      return res.status(400).json({ error: "งวดนี้มีการออกรางวัลแล้ว ไม่สามารถเพิ่มเลขใหม่ได้" });
+    }
+
+    // 3) ตรวจว่าเลขนี้มีอยู่แล้วในงวดล่าสุดหรือไม่
     const [check] = await db.query(
       "SELECT * FROM lotto WHERE reward_id = ? AND number = ?",
       [reward_id, number]
@@ -125,7 +150,7 @@ app.post("/lotto", async (req, res) => {
       return res.status(400).json({ message: "This number already exists in this reward" });
     }
 
-    // 3) Insert เข้า lotto (งวดล่าสุด)
+    // 4) Insert เข้า lotto (งวดล่าสุด)
     const [results] = await db.query(
       "INSERT INTO lotto (reward_id, number, price, status) VALUES (?, ?, ?, ?)",
       [reward_id, number, price, status]
@@ -143,9 +168,10 @@ app.post("/lotto", async (req, res) => {
 });
 
 // ADMIN: RANDOM LOTTO (หลายใบ - งวดล่าสุดเท่านั้น)
-function generateRandomNumber() {       // ฟังก์ชันสุ่มเลข 6 หลัก
+function generateRandomNumber() { // ฟังก์ชันสุ่มเลข 6 หลัก
   return String(Math.floor(Math.random() * 1000000)).padStart(6, "0");
 }
+
 app.post("/lotto/random", async (req, res) => {
   const { id, randomCount } = req.body;
   const price = 80;
@@ -175,11 +201,36 @@ app.post("/lotto/random", async (req, res) => {
       return res.status(400).json({ message: "No reward found (ยังไม่มีงวด)" });
     }
 
-    // 2) ดึงเลขที่มีแล้วในงวดล่าสุด
+    // 2) ตรวจสอบว่า งวดล่าสุดมีการออกรางวัลไปแล้วหรือยัง
+    const [rewardRows] = await db.query(
+      "SELECT CAST(reward_data AS CHAR) AS reward_data FROM reward WHERE reward_id = ?",
+      [reward_id]
+    );
+
+    if (!rewardRows.length) {
+      return res.status(404).json({ error: "ไม่พบข้อมูล reward" });
+    }
+
+    let rewardData;
+    try {
+      rewardData = JSON.parse(rewardRows[0].reward_data);
+    } catch (err) {
+      return res.status(500).json({ error: "reward_data format invalid" });
+    }
+
+    const alreadyDrawn = rewardData.some(
+      (r) => r.winning !== null && r.winning !== undefined && String(r.winning).trim() !== ""
+    );
+
+    if (alreadyDrawn) {
+      return res.status(400).json({ error: "งวดนี้มีการออกรางวัลแล้ว ไม่สามารถสุ่มเพิ่มได้" });
+    }
+
+    // 3) ดึงเลขที่มีแล้วในงวดล่าสุด
     const [existing] = await db.query("SELECT number FROM lotto WHERE reward_id = ?", [reward_id]);
     const existingNumbers = new Set(existing.map((row) => row.number));
 
-    // 3) วนสุ่มและ insert
+    // 4) วนสุ่มและ insert
     const inserted = [];
     while (inserted.length < randomCount) {
       const num = generateRandomNumber();
@@ -193,7 +244,7 @@ app.post("/lotto/random", async (req, res) => {
       }
     }
 
-    // 4) ส่งผลลัพธ์
+    // 5) ส่งผลลัพธ์
     res.json({
       message: "✅ Random lotto inserted successfully",
       reward_id,
