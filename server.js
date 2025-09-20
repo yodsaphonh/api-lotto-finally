@@ -4,20 +4,22 @@ const cors = require("cors");
 const os = require("os");
 
 const app = express();
-const port = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
 // connect db
 const db = mysql.createPool({
-  host: "202.28.34.203",
-  user: "mb68_66011212242",
-  password: "x29SGIWz%F$O",
-  database: "mb68_66011212242",
-  port: 3306,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: Number(process.env.DB_PORT) || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
 });
-
 // test route
 app.get("/", (req, res) => {
   res.send("API is running 🚀");
@@ -932,23 +934,18 @@ app.post("/reward/reset", async (req, res) => {
   }
 });
 
-
+  
 
 
 
 //==================================================================
 //                          START SERVER
 //==================================================================
-app.listen(port, "0.0.0.0", () => {
-  const nets = os.networkInterfaces();
-  const addresses = [];
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
-      if (net.family === "IPv4" && !net.internal) {
-        addresses.push(net.address);
-      }
-    }
-  }
-  console.log("✅ Server running on:");
-  addresses.forEach((ip) => console.log(`   http://${ip}:${port}`));
+// Start
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✅ Server listening on port ${PORT}`);
 });
+
+// Global handlers
+process.on("unhandledRejection", (r) => console.error("Unhandled Rejection:", r));
+process.on("uncaughtException", (e) => { console.error("Uncaught Exception:", e); process.exit(1); });
