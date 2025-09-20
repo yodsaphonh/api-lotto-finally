@@ -35,6 +35,57 @@ app.get("/users", async (req, res) => {
   }
 });
 
+// GET: ดึงรางวัลงวดล่าสุด (รางวัลที่ 1, 2, 3, เลขท้าย 3 ตัว, เลขท้าย 2 ตัว)
+app.get("/reward/latest", async (req, res) => {
+  try {
+    // 1) หางวดล่าสุด
+    const [latest] = await db.query("SELECT MAX(reward_id) AS rid FROM reward");
+    const rewardId = latest[0]?.rid;
+
+    if (!rewardId) {
+      return res.status(404).json({ message: "ยังไม่มีงวดในระบบ" });
+    }
+
+    // 2) ดึง reward_data ของงวดล่าสุด
+    const [rows] = await db.query(
+      "SELECT reward_id, CAST(reward_data AS CHAR) AS reward_data, date FROM reward WHERE reward_id = ?",
+      [rewardId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "ไม่พบ reward_data" });
+    }
+
+    let rewardData;
+    try {
+      rewardData = JSON.parse(rows[0].reward_data);
+    } catch (err) {
+      return res.status(500).json({ error: "reward_data format invalid" });
+    }
+
+    // 3) กรองเอาเฉพาะ tier 1-5
+    const filtered = rewardData
+      .filter(r => [1, 2, 3, 4, 5].includes(r.tier))
+      .map(r => ({
+        name: r.name,
+        tier: r.tier,
+        amount: r.amount,
+        winning: r.winning
+      }));
+
+    // 4) ส่งออก
+    res.json({
+      message: "✅ ดึงข้อมูลรางวัลงวดล่าสุดสำเร็จ",
+      reward_id: rows[0].reward_id,
+      date: rows[0].date,
+      rewards: filtered
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 //==================================================================
 //                        ADMIN ROUTE
 //==================================================================
@@ -934,7 +985,7 @@ app.post("/reward/reset", async (req, res) => {
   }
 });
 
-  
+
 
 
 
