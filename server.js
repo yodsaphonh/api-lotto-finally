@@ -584,7 +584,7 @@ app.get("/lotto", async (req, res) => {
 
     // 2) ดึงเฉพาะที่ยังไม่ถูกซื้อในงวดล่าสุด
     const [results] = await db.query(
-      "SELECT * FROM lotto WHERE reward_id = ? AND status = 'ยังไม่ถูกซื้อ'",
+      "SELECT * FROM lotto WHERE reward_id = ?",
       [latestRewardId]
     );
 
