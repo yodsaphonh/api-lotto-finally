@@ -19,10 +19,22 @@ const db = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  ssl: { rejectUnauthorized: true, servername: process.env.DB_HOST }
 });
 // test route
 app.get("/", (req, res) => {
   res.send("API is running 🚀");
+});
+
+
+// health check DB
+app.get("/db-check", async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT NOW() AS now, DATABASE() AS db");
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 //test select all users
@@ -977,9 +989,13 @@ app.post("/reward/reset", async (req, res) => {
     return res.status(400).json({ error: "กรุณาระบุ user id" });
   }
 
+  let conn;
   try {
-    // 0) ตรวจสอบ role ของ user
-    const [users] = await db.query("SELECT role FROM users WHERE user_id = ?", [id]);
+    // 0) ตรวจสอบ role ของผู้เรียก
+    const [users] = await db.query(
+      "SELECT role FROM users WHERE user_id = ?",
+      [id]
+    );
     if (!users.length) {
       return res.status(404).json({ error: "ไม่เจอผู้ใช้" });
     }
@@ -987,13 +1003,22 @@ app.post("/reward/reset", async (req, res) => {
       return res.status(403).json({ error: "แอดมินเท่านั้นที่จะสร้างงวดใหม่ได้" });
     }
 
+    // ใช้ทรานแซกชัน
+    conn = await db.getConnection();
+    await conn.beginTransaction();
+
     // 1) ลบข้อมูลทั้งหมดใน orders
-    await db.query("DELETE FROM orders");
+    const [delOrders] = await conn.query("DELETE FROM orders");
 
     // 2) ลบข้อมูลทั้งหมดใน lotto
-    await db.query("DELETE FROM lotto");
+    const [delLotto] = await conn.query("DELETE FROM lotto");
 
-    // 3) template reward_data
+    // 3) ลบ users ที่ role = 'user' ให้เหลือเฉพาะ admin
+    const [delUsers] = await conn.query(
+      "DELETE FROM users WHERE LOWER(role) = 'user'"
+    );
+
+    // 4) template reward_data
     const template = [
       { name: "รางวัลที่ 1", tier: 1, amount: 6000000, winning: null },
       { name: "รางวัลที่ 2", tier: 2, amount: 200000, winning: null },
@@ -1002,15 +1027,15 @@ app.post("/reward/reset", async (req, res) => {
       { name: "เลขท้าย 2 ตัว", tier: 5, amount: 2000, winning: null }
     ];
 
-    // 4) วันที่วันนี้ (ฟอร์แมต YYYY-MM-DD)
+    // 5) วันที่วันนี้ (ฟอร์แมต YYYY-MM-DD)
     let newDate = new Date();
     newDate.setHours(0, 0, 0, 0);
     let dateStr = newDate.toISOString().split("T")[0];
 
-    // 5) เช็คว่ามี reward.date ซ้ำหรือยัง
+    // 6) กัน date ซ้ำ
     let isDuplicate = true;
     while (isDuplicate) {
-      const [check] = await db.query("SELECT * FROM reward WHERE date = ?", [dateStr]);
+      const [check] = await conn.query("SELECT 1 FROM reward WHERE date = ?", [dateStr]);
       if (check.length > 0) {
         newDate.setDate(newDate.getDate() + 1);
         dateStr = newDate.toISOString().split("T")[0];
@@ -1019,22 +1044,35 @@ app.post("/reward/reset", async (req, res) => {
       }
     }
 
-    // 6) insert งวดใหม่
-    const [result] = await db.query(
+    // 7) insert งวดใหม่
+    const [result] = await conn.query(
       "INSERT INTO reward (reward_data, date) VALUES (?, ?)",
       [JSON.stringify(template), dateStr]
     );
 
+    await conn.commit();
+
     res.json({
-      message: "งวดใหม่ถูกสร้างเรียบร้อยแล้ว (ล้าง orders และ lotto เก่าออกหมด)",
+      message: "งวดใหม่ถูกสร้างเรียบร้อยแล้ว (ล้าง orders, lotto และลบ users ที่ role = 'user')",
       new_reward_id: result.insertId,
       date: dateStr,
-      reward_data: template
+      reward_data: template,
+      deleted: {
+        orders: delOrders.affectedRows || 0,
+        lotto: delLotto.affectedRows || 0,
+        users_role_user: delUsers.affectedRows || 0
+      }
     });
   } catch (err) {
+    if (conn) {
+      try { await conn.rollback(); } catch {}
+    }
     res.status(500).json({ error: err.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
+
 
 
 
