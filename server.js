@@ -15,10 +15,13 @@ const db = mysql.createPool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  port: Number(process.env.DB_PORT) || 3306,
+  port: Number(process.env.DB_PORT) || 4016,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  keepAliveInitialDelay: 10000,
+  enableKeepAlive: true,
+  connectTimeout: 20000,
   ssl: { rejectUnauthorized: true, servername: process.env.DB_HOST }
 });
 // test route
@@ -30,10 +33,10 @@ app.get("/", (req, res) => {
 // health check DB
 app.get("/db-check", async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT NOW() AS now, DATABASE() AS db");
+    const [rows] = await db.query("SELECT NOW() now, DATABASE() db");
     res.json(rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (e) {
+    res.status(500).json({ error: e.code || e.message });
   }
 });
 
