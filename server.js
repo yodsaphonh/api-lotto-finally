@@ -90,7 +90,7 @@ app.delete("/users/:id", async (req, res) => {
 
     await conn.commit();
     return res.json({
-      message: "✅ ลบผู้ใช้สำเร็จ",
+      message: "ลบผู้ใช้สำเร็จ",
       deleted: {
         orders: delOrders.affectedRows || 0,
         users: delUser.affectedRows || 0
@@ -166,7 +166,7 @@ app.get("/reward/latest", async (req, res) => {
 
     // 4) ส่งออก
     res.json({
-      message: "✅ ดึงข้อมูลรางวัลงวดล่าสุดสำเร็จ",
+      message: "ดึงข้อมูลรางวัลงวดล่าสุดสำเร็จ",
       reward_id: rows[0].reward_id,
       date: rows[0].date,
       rewards: filtered
@@ -248,7 +248,7 @@ app.post("/lotto", async (req, res) => {
     );
 
     res.json({
-      message: "✅ Lotto inserted successfully",
+      message: "Lotto inserted successfully",
       lotto_id: results.insertId,
       reward_id,
       data: { number, price, status }
@@ -337,7 +337,7 @@ app.post("/lotto/random", async (req, res) => {
 
     // 5) ส่งผลลัพธ์
     res.json({
-      message: "✅ Random lotto inserted successfully",
+      message: "Random lotto inserted successfully",
       reward_id,
       total: inserted.length,
       numbers: inserted,
@@ -440,7 +440,7 @@ app.post("/reward/draw", async (req, res) => {
     const pick3 = picked[2] || picked[1] || picked[0] || null;
     const pick4 = picked[3] || picked[2] || picked[1] || picked[0] || null;
 
-    // ✅ อัปเดตเลขรางวัล
+    // อัปเดตเลขรางวัล
     if (byTier.get(1)) byTier.get(1).winning = pick1;
     if (byTier.get(2)) byTier.get(2).winning = pick2;
     if (byTier.get(3)) byTier.get(3).winning = pick3;
@@ -452,7 +452,7 @@ app.post("/reward/draw", async (req, res) => {
     await db.query("UPDATE reward SET reward_data = ? WHERE reward_id = ?", [payload, latestId]);
 
     res.json({
-      message: "✅ สุ่มเลขและอัปเดตสำเร็จ",
+      message: "สุ่มเลขและอัปเดตสำเร็จ",
       mode: statusType,
       reward_id: latestId,
       picked,
@@ -519,7 +519,7 @@ app.post("/register", async (req, res) => {
       "INSERT INTO users (email, password, name, role, phone, birthday, wallet) VALUES (?, ?, ?, ?, ?, ?, ?)",
       [email, password, name, role, phone, birthday, wallet]
     );
-    res.json({ message: "✅ User created successfully", id: results.insertId });
+    res.json({ message: "User created successfully", id: results.insertId });
   } catch (err) {
     res.status(500).json({ error: "Failed to create user" });
   }
@@ -1152,17 +1152,11 @@ app.post("/reward/reset", async (req, res) => {
   }
 });
 
-
-
-
-
-
 //==================================================================
 //                          START SERVER
 //==================================================================
-// Start
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`✅ Server listening on port ${PORT}`);
+  console.log(`Server listening on port ${PORT}`);
 });
 
 // Global handlers
