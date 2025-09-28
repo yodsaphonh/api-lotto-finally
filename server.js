@@ -366,6 +366,9 @@ app.post("/reward/draw", async (req, res) => {
     // }
 
     // กำหนด statusType
+    let statusType = String(rawStatusType || "sold").toLowerCase();
+    if (!["sold", "all", "purchased", "ซื้อแล้ว"].includes(statusType)) statusType = "sold";
+    if (statusType === "purchased" || statusType === "ซื้อแล้ว") statusType = "sold";
     const LIMIT = 4;
 
     // 1) หางวดล่าสุด
@@ -1064,16 +1067,16 @@ app.post("/reward/reset", async (req, res) => {
   let conn;
   try {
     // 0) ตรวจสอบ role ของผู้เรียก
-    const [users] = await db.query(
-      "SELECT role FROM users WHERE user_id = ?",
-      [id]
-    );
-    if (!users.length) {
-      return res.status(404).json({ error: "ไม่เจอผู้ใช้" });
-    }
-    if (String(users[0].role).toLowerCase() !== "admin") {
-      return res.status(403).json({ error: "แอดมินเท่านั้นที่จะสร้างงวดใหม่ได้" });
-    }
+    // const [users] = await db.query(
+    //   "SELECT role FROM users WHERE user_id = ?",
+    //   [id]
+    // );
+    // if (!users.length) {
+    //   return res.status(404).json({ error: "ไม่เจอผู้ใช้" });
+    // }
+    // if (String(users[0].role).toLowerCase() !== "admin") {
+    //   return res.status(403).json({ error: "แอดมินเท่านั้นที่จะสร้างงวดใหม่ได้" });
+    // }
 
     // ใช้ทรานแซกชัน
     conn = await db.getConnection();
@@ -1100,21 +1103,21 @@ app.post("/reward/reset", async (req, res) => {
     ];
 
     // 5) วันที่วันนี้ (ฟอร์แมต YYYY-MM-DD)
-    // let newDate = new Date();
-    // newDate.setHours(0, 0, 0, 0);
-    // let dateStr = newDate.toISOString().split("T")[0];
+    let newDate = new Date();
+    newDate.setHours(0, 0, 0, 0);
+    let dateStr = newDate.toISOString().split("T")[0];
 
     // 6) กัน date ซ้ำ
-    // let isDuplicate = true;
-    // while (isDuplicate) {
-    //   const [check] = await conn.query("SELECT 1 FROM reward WHERE date = ?", [dateStr]);
-    //   if (check.length > 0) {
-    //     newDate.setDate(newDate.getDate() + 1);
-    //     dateStr = newDate.toISOString().split("T")[0];
-    //   } else {
-    //     isDuplicate = false;
-    //   }
-    // }
+    let isDuplicate = true;
+    while (isDuplicate) {
+      const [check] = await conn.query("SELECT 1 FROM reward WHERE date = ?", [dateStr]);
+      if (check.length > 0) {
+        newDate.setDate(newDate.getDate() + 1);
+        dateStr = newDate.toISOString().split("T")[0];
+      } else {
+        isDuplicate = false;
+      }
+    }
 
     // 7) insert งวดใหม่
     const [result] = await conn.query(
