@@ -1064,16 +1064,16 @@ app.post("/reward/reset", async (req, res) => {
   let conn;
   try {
     // 0) ตรวจสอบ role ของผู้เรียก
-    // const [users] = await db.query(
-    //   "SELECT role FROM users WHERE user_id = ?",
-    //   [id]
-    // );
-    // if (!users.length) {
-    //   return res.status(404).json({ error: "ไม่เจอผู้ใช้" });
-    // }
-    // if (String(users[0].role).toLowerCase() !== "admin") {
-    //   return res.status(403).json({ error: "แอดมินเท่านั้นที่จะสร้างงวดใหม่ได้" });
-    // }
+    const [users] = await db.query(
+      "SELECT role FROM users WHERE user_id = ?",
+      [id]
+    );
+    if (!users.length) {
+      return res.status(404).json({ error: "ไม่เจอผู้ใช้" });
+    }
+    if (String(users[0].role).toLowerCase() !== "admin") {
+      return res.status(403).json({ error: "แอดมินเท่านั้นที่จะสร้างงวดใหม่ได้" });
+    }
 
     // ใช้ทรานแซกชัน
     conn = await db.getConnection();
