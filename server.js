@@ -29,28 +29,55 @@ app.get("/", (req, res) => {
   res.send("API is running 🚀");
 });
 
-//test del user
+// DELETE /users/:id  — ลบ orders ของ user ก่อน แล้วค่อยลบ user (ถ้าไม่ใช่ admin)
 app.delete("/users/:id", async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
+  const uid = Number(req.params.id);
+  if (!Number.isInteger(uid) || uid <= 0) {
     return res.status(400).json({ error: "invalid user_id" });
   }
 
+  let conn;
   try {
-    const [result] = await db.query(
-      "DELETE FROM users WHERE user_id = ? AND LOWER(role) <> 'admin'",
-      [id]
+    conn = await db.getConnection();
+    await conn.beginTransaction();
+
+    // 1) ลบ orders ที่อ้าง user นี้ก่อน (กัน FK ติด)
+    const [delOrders] = await conn.query(
+      "DELETE FROM orders WHERE user_id = ?",
+      [uid]
     );
-    if (result.affectedRows === 0) {
-      return res
-        .status(404)
-        .json({ message: "ไม่พบผู้ใช้ หรือผู้ใช้นั้นเป็น admin (จึงไม่ลบ)" });
+
+    // 2) ค่อยลบจาก users แต่ห้ามลบ admin
+    const [delUser] = await conn.query(
+      "DELETE FROM users WHERE user_id = ? AND LOWER(role) <> 'admin'",
+      [uid]
+    );
+
+    if (delUser.affectedRows === 0) {
+      // ไม่มี user นี้ หรือเป็น admin → ยกเลิกและแจ้ง
+      await conn.rollback();
+      return res.status(404).json({
+        message: "ไม่พบผู้ใช้ หรือผู้ใช้นั้นเป็น admin (จึงไม่ลบ)",
+        deleted: { orders: delOrders.affectedRows || 0, users: 0 }
+      });
     }
-    res.json({ deleted: true, user_id: id });
+
+    await conn.commit();
+    return res.json({
+      message: "✅ ลบผู้ใช้สำเร็จ",
+      deleted: {
+        orders: delOrders.affectedRows || 0,
+        users: delUser.affectedRows || 0
+      }
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (conn) { try { await conn.rollback(); } catch {} }
+    return res.status(500).json({ error: err.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
+
 
 // health check DB
 app.get("/db-check", async (req, res) => {
