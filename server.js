@@ -33,7 +33,7 @@ app.get("/", (req, res) => {
 app.delete("/users/:id", async (req, res) => {
   const uid = Number(req.params.id);
   if (!Number.isInteger(uid) || uid <= 0) {
-    return res.status(400).json({ error: "invalid user_id" });
+    return res.status(400).json("invalid user_id");
   }
 
   let conn;
@@ -52,7 +52,7 @@ app.delete("/users/:id", async (req, res) => {
     }
     if (String(urows[0].role).toLowerCase() === "admin") {
       await conn.rollback();
-      return res.status(400).json({ error: "ห้ามลบแอดมิน" });
+      return res.status(400).json("ห้ามลบแอดมิน");
     }
 
     // ========== ลบ orders ของ user นี้ ==========
@@ -98,7 +98,7 @@ app.delete("/users/:id", async (req, res) => {
     });
   } catch (err) {
     if (conn) { try { await conn.rollback(); } catch {} }
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json(err.message);
   } finally {
     if (conn) conn.release();
   }
@@ -112,7 +112,7 @@ app.get("/db-check", async (req, res) => {
     const [rows] = await db.query("SELECT NOW() now, DATABASE() db");
     res.json(rows[0]);
   } catch (e) {
-    res.status(500).json({ error: e.code || e.message });
+    res.status(500).json(e.code || e.message);
   }
 });
 
@@ -122,7 +122,7 @@ app.get("/users", async (req, res) => {
     const [results] = await db.query("SELECT * FROM users");
     res.json(results);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
@@ -151,7 +151,7 @@ app.get("/reward/latest", async (req, res) => {
     try {
       rewardData = JSON.parse(rows[0].reward_data);
     } catch (err) {
-      return res.status(500).json({ error: "reward_data format invalid" });
+      return res.status(500).json("reward_data format invalid");
     }
 
     // 3) กรองเอาเฉพาะ tier 1-5
@@ -172,7 +172,7 @@ app.get("/reward/latest", async (req, res) => {
       rewards: filtered
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
@@ -187,18 +187,18 @@ app.post("/lotto", async (req, res) => {
   const price = 80;
 
   if (!id || !number) {
-    return res.status(400).json({ error: "กรุณาระบุ id และ number" });
+    return res.status(400).json("กรุณาระบุ id และ number");
   }
 
   try {
     // 0) ตรวจ role ของ user
-    const [users] = await db.query("SELECT role FROM users WHERE user_id = ?", [id]);
-    if (users.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    if (String(users[0].role).toLowerCase() !== "admin") {
-      return res.status(403).json({ error: "Only admin can insert lotto" });
-    }
+    // const [users] = await db.query("SELECT role FROM users WHERE user_id = ?", [id]);
+    // if (users.length === 0) {
+    //   return res.status(404).json("User not found");
+    // }
+    // if (String(users[0].role).toLowerCase() !== "admin") {
+    //   return res.status(403).json("Only admin can insert lotto");
+    // }
 
     // 1) หางวดล่าสุด
     const [latest] = await db.query("SELECT MAX(reward_id) AS rid FROM reward");
@@ -214,14 +214,14 @@ app.post("/lotto", async (req, res) => {
     );
 
     if (!rewardRows.length) {
-      return res.status(404).json({ error: "ไม่พบข้อมูล reward" });
+      return res.status(404).json("ไม่พบข้อมูล reward");
     }
 
     let rewardData;
     try {
       rewardData = JSON.parse(rewardRows[0].reward_data);
     } catch (err) {
-      return res.status(500).json({ error: "reward_data format invalid" });
+      return res.status(500).json("reward_data format invalid");
     }
 
     const alreadyDrawn = rewardData.some(
@@ -229,17 +229,17 @@ app.post("/lotto", async (req, res) => {
     );
 
     if (alreadyDrawn) {
-      return res.status(400).json({ error: "งวดนี้มีการออกรางวัลแล้ว ไม่สามารถเพิ่มเลขใหม่ได้" });
+      return res.status(400).json("งวดนี้มีการออกรางวัลแล้ว ไม่สามารถเพิ่มเลขใหม่ได้");
     }
 
     // 3) ตรวจว่าเลขนี้มีอยู่แล้วในงวดล่าสุดหรือไม่
-    const [check] = await db.query(
-      "SELECT * FROM lotto WHERE reward_id = ? AND number = ?",
-      [reward_id, number]
-    );
-    if (check.length > 0) {
-      return res.status(400).json({ message: "This number already exists in this reward" });
-    }
+    // const [check] = await db.query(
+    //   "SELECT * FROM lotto WHERE reward_id = ? AND number = ?",
+    //   [reward_id, number]
+    // );
+    // if (check.length > 0) {
+    //   return res.status(400).json({ message: "This number already exists in this reward" });
+    // }
 
     // 4) Insert เข้า lotto (งวดล่าสุด)
     const [results] = await db.query(
@@ -254,7 +254,7 @@ app.post("/lotto", async (req, res) => {
       data: { number, price, status }
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
@@ -269,10 +269,10 @@ app.post("/lotto/random", async (req, res) => {
   const lotto_status = "ยังไม่ถูกซื้อ";
 
   if (!id) {
-    return res.status(400).json({ error: "กรุณาระบุ id" });
+    return res.status(400).json("กรุณาระบุ id");
   }
   if (!randomCount || randomCount <= 0) {
-    return res.status(400).json({ error: "กรุณาระบุจำนวน randomCount > 0" });
+    return res.status(400).json("กรุณาระบุจำนวน randomCount > 0");
   }
 
   try {
@@ -299,14 +299,14 @@ app.post("/lotto/random", async (req, res) => {
     );
 
     if (!rewardRows.length) {
-      return res.status(404).json({ error: "ไม่พบข้อมูล reward" });
+      return res.status(404).json("ไม่พบข้อมูล reward");
     }
 
     let rewardData;
     try {
       rewardData = JSON.parse(rewardRows[0].reward_data);
     } catch (err) {
-      return res.status(500).json({ error: "reward_data format invalid" });
+      return res.status(500).json("reward_data format invalid");
     }
 
     const alreadyDrawn = rewardData.some(
@@ -314,7 +314,7 @@ app.post("/lotto/random", async (req, res) => {
     );
 
     if (alreadyDrawn) {
-      return res.status(400).json({ error: "งวดนี้มีการออกรางวัลแล้ว ไม่สามารถสุ่มเพิ่มได้" });
+      return res.status(400).json("งวดนี้มีการออกรางวัลแล้ว ไม่สามารถสุ่มเพิ่มได้");
     }
 
     // 3) ดึงเลขที่มีแล้วในงวดล่าสุด
@@ -343,7 +343,7 @@ app.post("/lotto/random", async (req, res) => {
       numbers: inserted,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
@@ -352,24 +352,20 @@ app.post("/reward/draw", async (req, res) => {
   const { id, statusType: rawStatusType } = req.body;
 
   if (!id) {
-    return res.status(400).json({ error: "กรุณาระบุ id" });
+    return res.status(400).json("กรุณาระบุ id");
   }
 
   try {
     // 0) ตรวจสอบ role ของ user
-    const [users] = await db.query("SELECT role FROM users WHERE user_id = ?", [id]);
-    if (users.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    if (String(users[0].role).toLowerCase() !== "admin") {
-      return res.status(403).json({ error: "Only admin can draw reward" });
-    }
+    // const [users] = await db.query("SELECT role FROM users WHERE user_id = ?", [id]);
+    // if (users.length === 0) {
+    //   return res.status(404).json("User not found");
+    // }
+    // if (String(users[0].role).toLowerCase() !== "admin") {
+    //   return res.status(403).json("Only admin can draw reward");
+    // }
 
     // กำหนด statusType
-    let statusType = String(rawStatusType || "sold").toLowerCase();
-    if (!["sold", "all", "purchased", "ซื้อแล้ว"].includes(statusType)) statusType = "sold";
-    if (statusType === "purchased" || statusType === "ซื้อแล้ว") statusType = "sold";
-
     const LIMIT = 4;
 
     // 1) หางวดล่าสุด
@@ -459,7 +455,7 @@ app.post("/reward/draw", async (req, res) => {
       reward_data: data
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 //==================================================================
@@ -483,7 +479,7 @@ app.get("/users/:id", async (req, res) => {
     if (results.length === 0) return res.status(404).json({ message: "User not found" });
     res.json(results[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
@@ -493,19 +489,19 @@ app.get("/users/:id", async (req, res) => {
 app.post("/users/login", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required" });
+    return res.status(400).json("Email and password are required");
   }
 
   try {
     const [results] = await db.query("SELECT * FROM users WHERE email = ? AND password = ?", [email, password]);
     if (results.length === 0) {
-      return res.status(401).json({ error: "Invalid email or password" });
+      return res.status(401).json("Invalid email or password");
     }
     const userData = { ...results[0] };
     delete userData.password;
     res.json({ message: "Login successful", user: userData });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
@@ -521,11 +517,9 @@ app.post("/register", async (req, res) => {
     );
     res.json({ message: "User created successfully", id: results.insertId });
   } catch (err) {
-    res.status(500).json({ error: "Failed to create user" });
+    res.status(500).json("Failed to create user");
   }
 });
-
-
 
 // profile
 
@@ -536,7 +530,7 @@ app.get("/profile/:id", async (req, res) => {
     if (results.length === 0) return res.status(404).json({ message: "User not found" });
     res.json(results[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
@@ -547,7 +541,7 @@ app.post("/deposit/:id", async (req, res) => {
   const { amount } = req.body;
 
   if (!amount || amount <= 0) {
-    return res.status(400).json({ error: "จำนวนเงินฝากต้องมากกว่า 0" });
+    return res.status(400).json("จำนวนเงินฝากต้องมากกว่า 0");
   }
 
   try {
@@ -569,7 +563,7 @@ app.post("/deposit/:id", async (req, res) => {
       user: rows[0],
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
@@ -581,7 +575,7 @@ app.post("/withdraw/:id", async (req, res) => {
   const { amount } = req.body;
 
   if (!amount || amount <= 0) {
-    return res.status(400).json({ error: "จำนวนเงินถอนต้องมากกว่า 0" });
+    return res.status(400).json("จำนวนเงินถอนต้องมากกว่า 0");
   }
 
   try {
@@ -593,7 +587,7 @@ app.post("/withdraw/:id", async (req, res) => {
 
     const currentWallet = parseFloat(users[0].wallet);
     if (currentWallet < amount) {
-      return res.status(400).json({ error: "ยอดเงินไม่เพียงพอ" });
+      return res.status(400).json("ยอดเงินไม่เพียงพอ");
     }
 
     // 2) อัปเดต wallet
@@ -614,7 +608,7 @@ app.post("/withdraw/:id", async (req, res) => {
       user: rows[0],
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
@@ -656,7 +650,7 @@ app.get("/mylotto/:id", async (req, res) => {
       orders: rows,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
@@ -666,17 +660,16 @@ app.get("/mylotto/:id", async (req, res) => {
 app.get("/lotto", async (req, res) => {
   try {
     // 1) หา reward_id ล่าสุด
-    const [latest] = await db.query("SELECT MAX(reward_id) AS rid FROM reward");
-    const latestRewardId = latest[0]?.rid;
+    // const [latest] = await db.query("SELECT MAX(reward_id) AS rid FROM reward");
+    // const latestRewardId = latest[0]?.rid;
 
-    if (!latestRewardId) {
-      return res.status(404).json({ message: "ยังไม่มีงวดในระบบ" });
-    }
+    // if (!latestRewardId) {
+    //   return res.status(404).json({ message: "ยังไม่มีงวดในระบบ" });
+    // }
 
     // 2) ดึงเฉพาะที่ยังไม่ถูกซื้อในงวดล่าสุด
     const [results] = await db.query(
-      "SELECT * FROM lotto WHERE reward_id = ?",
-      [latestRewardId]
+      "SELECT * FROM lotto"
     );
 
     res.json({
@@ -686,7 +679,7 @@ app.get("/lotto", async (req, res) => {
       lotto: results,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
@@ -697,7 +690,7 @@ app.post("/search/lotto", async (req, res) => {
   const { number } = req.body;
 
   if (!number || number.trim() === "") {
-    return res.status(400).json({ error: "กรุณาระบุเลขที่ต้องการค้นหา" });
+    return res.status(400).json("กรุณาระบุเลขที่ต้องการค้นหา");
   }
 
   try {
@@ -739,46 +732,46 @@ app.post("/search/lotto", async (req, res) => {
       results: rows,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
 
 
 // RANDOM ONE LOTTO
-app.get("/lotto/randomOne", async (req, res) => {
-  try {
-    // 1) หางวดล่าสุด
-    const [latest] = await db.query("SELECT MAX(reward_id) AS rid FROM reward");
-    const latestRewardId = latest[0]?.rid;
-    if (!latestRewardId) {
-      return res.status(404).json({ message: "ยังไม่มีงวดในระบบ" });
-    }
+// app.get("/lotto/randomOne", async (req, res) => {
+//   try {
+//     // 1) หางวดล่าสุด
+//     const [latest] = await db.query("SELECT MAX(reward_id) AS rid FROM reward");
+//     const latestRewardId = latest[0]?.rid;
+//     if (!latestRewardId) {
+//       return res.status(404).json({ message: "ยังไม่มีงวดในระบบ" });
+//     }
 
-    // 2) สุ่มเลขที่ยังไม่ถูกซื้อในงวดนั้น
-    const [rows] = await db.query(
-      `
-      SELECT lotto_id, number, price, status, reward_id
-      FROM lotto
-      WHERE reward_id = ? AND status = 'ยังไม่ถูกซื้อ'
-      ORDER BY RAND()
-      LIMIT 1
-      `,
-      [latestRewardId]
-    );
+//     // 2) สุ่มเลขที่ยังไม่ถูกซื้อในงวดนั้น
+//     const [rows] = await db.query(
+//       `
+//       SELECT lotto_id, number, price, status, reward_id
+//       FROM lotto
+//       WHERE reward_id = ? AND status = 'ยังไม่ถูกซื้อ'
+//       ORDER BY RAND()
+//       LIMIT 1
+//       `,
+//       [latestRewardId]
+//     );
 
-    if (rows.length === 0) {
-      return res.status(404).json({ message: "งวดนี้ไม่มีลอตเตอรี่ที่เหลืออยู่แล้ว" });
-    }
+//     if (rows.length === 0) {
+//       return res.status(404).json({ message: "งวดนี้ไม่มีลอตเตอรี่ที่เหลืออยู่แล้ว" });
+//     }
 
-    res.json({
-      message: "สุ่มลอตเตอรี่สำเร็จ",
-      lotto: rows[0]
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+//     res.json({
+//       message: "สุ่มลอตเตอรี่สำเร็จ",
+//       lotto: rows[0]
+//     });
+//   } catch (err) {
+//     res.status(500).json(err.message);
+//   }
+// });
 
 
 
@@ -787,24 +780,24 @@ app.post("/orders", async (req, res) => {
   const { user_id, lotto_id } = req.body;
 
   if (!user_id || !lotto_id) {
-    return res.status(400).json({ error: "กรุณาระบุ user_id และ lotto_id" });
+    return res.status(400).json("กรุณาระบุ user_id และ lotto_id");
   }
 
   try {
     // 0) ตรวจสอบ role ของ user
-    const [users] = await db.query("SELECT role FROM users WHERE user_id = ?", [user_id]);
-    if (users.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    if (String(users[0].role).toLowerCase() !== "user") {
-      return res.status(403).json({ error: "Only user can buy lotto" });
-    }
+    // const [users] = await db.query("SELECT role FROM users WHERE user_id = ?", [user_id]);
+    // if (users.length === 0) {
+    //   return res.status(404).json("User not found");
+    // }
+    // if (String(users[0].role).toLowerCase() !== "user") {
+    //   return res.status(403).json("Only user can buy lotto");
+    // }
 
     // 1) หางวดล่าสุด
     const [latest] = await db.query("SELECT MAX(reward_id) AS rid FROM reward");
     const reward_id = latest[0]?.rid;
     if (!reward_id) {
-      return res.status(400).json({ error: "No reward found (ยังไม่มีงวด)" });
+      return res.status(400).json("No reward found (ยังไม่มีงวด)");
     }
 
     // 2) ตรวจสอบว่า reward งวดล่าสุดได้ออกรางวัลแล้วหรือยัง
@@ -813,14 +806,14 @@ app.post("/orders", async (req, res) => {
       [reward_id]
     );
     if (!rewardRows.length) {
-      return res.status(404).json({ error: "ไม่พบข้อมูล reward" });
+      return res.status(404).json("ไม่พบข้อมูล reward");
     }
 
     let rewardData = [];
     try {
       rewardData = JSON.parse(rewardRows[0].reward_data);
     } catch (err) {
-      return res.status(500).json({ error: "reward_data format is invalid" });
+      return res.status(500).json("reward_data format is invalid");
     }
 
     // ถ้าใน reward_data มี winning ที่ไม่เป็น null หรือว่าง แสดงว่าออกรางวัลแล้ว
@@ -828,7 +821,7 @@ app.post("/orders", async (req, res) => {
       (r) => r.winning !== null && r.winning !== undefined && String(r.winning).trim() !== ""
     );
     if (alreadyDrawn) {
-      return res.status(400).json({ error: "งวดนี้ได้ออกรางวัลแล้ว ไม่สามารถซื้อได้" });
+      return res.status(400).json("งวดนี้ได้ออกรางวัลแล้ว ไม่สามารถซื้อได้");
     }
 
     // 3) ตรวจสอบว่า lotto_id นี้อยู่ในงวดล่าสุด และยังไม่ถูกซื้อ
@@ -837,7 +830,7 @@ app.post("/orders", async (req, res) => {
       [lotto_id, reward_id]
     );
     if (lotto.length === 0) {
-      return res.status(400).json({ error: "Lotto not available (งวดนี้ไม่มี หรือถูกซื้อแล้ว)" });
+      return res.status(400).json("Lotto not available (งวดนี้ไม่มี หรือถูกซื้อแล้ว)");
     }
 
     // 4) update lotto เป็นถูกซื้อแล้ว
@@ -860,7 +853,7 @@ app.post("/orders", async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
@@ -880,7 +873,7 @@ app.get("/orders/check/:order_id", async (req, res) => {
       [order_id]
     );
     if (!orders.length) {
-      return res.status(404).json({ error: "Order not found" });
+      return res.status(404).json("Order not found");
     }
 
     const order = orders[0];
@@ -893,14 +886,14 @@ app.get("/orders/check/:order_id", async (req, res) => {
       [reward_id]
     );
     if (!rewardRows.length) {
-      return res.status(404).json({ error: "Reward not found" });
+      return res.status(404).json("Reward not found");
     }
 
     let rewardData = [];
     try {
       rewardData = JSON.parse(rewardRows[0].reward_data);
     } catch (err) {
-      return res.status(500).json({ error: "reward_data format invalid" });
+      return res.status(500).json("reward_data format invalid");
     }
 
     // 3) ถ้ายังไม่ออกรางวัล (winning ยัง null) → หยุด
@@ -956,7 +949,7 @@ app.get("/orders/check/:order_id", async (req, res) => {
       });
     }
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
@@ -977,7 +970,7 @@ app.post("/orders/redeem", async (req, res) => {
       [order_id]
     );
     if (!orders.length) {
-      return res.status(404).json({ error: "Order not found" });
+      return res.status(404).json("Order not found");
     }
 
     const order = orders[0];
@@ -986,7 +979,7 @@ app.post("/orders/redeem", async (req, res) => {
 
     // ป้องกันกดซ้ำ
     if (order.status === "รับรางวัลแล้ว") {
-      return res.status(400).json({ error: "คุณได้ขึ้นรางวัลไปแล้ว" });
+      return res.status(400).json("คุณได้ขึ้นรางวัลไปแล้ว");
     }
 
     // 2) ดึง reward_data ของงวดนี้
@@ -995,14 +988,14 @@ app.post("/orders/redeem", async (req, res) => {
       [reward_id]
     );
     if (!rewardRows.length) {
-      return res.status(404).json({ error: "Reward not found" });
+      return res.status(404).json("Reward not found");
     }
 
     let rewardData = [];
     try {
       rewardData = JSON.parse(rewardRows[0].reward_data);
     } catch (err) {
-      return res.status(500).json({ error: "reward_data format invalid" });
+      return res.status(500).json("reward_data format invalid");
     }
 
     // 3) ตรวจว่าถูกรางวัลหรือไม่
@@ -1035,7 +1028,7 @@ app.post("/orders/redeem", async (req, res) => {
     }
 
     if (prize <= 0) {
-      return res.status(400).json({ error: "คุณไม่ถูกรางวัล" });
+      return res.status(400).json("คุณไม่ถูกรางวัล");
     }
 
     // 4) update wallet
@@ -1054,7 +1047,7 @@ app.post("/orders/redeem", async (req, res) => {
       newWallet
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   }
 });
 
@@ -1065,7 +1058,7 @@ app.post("/reward/reset", async (req, res) => {
   const { id } = req.body;
 
   if (!id) {
-    return res.status(400).json({ error: "กรุณาระบุ user id" });
+    return res.status(400).json("กรุณาระบุ user id");
   }
 
   let conn;
@@ -1107,9 +1100,9 @@ app.post("/reward/reset", async (req, res) => {
     ];
 
     // 5) วันที่วันนี้ (ฟอร์แมต YYYY-MM-DD)
-    let newDate = new Date();
-    newDate.setHours(0, 0, 0, 0);
-    let dateStr = newDate.toISOString().split("T")[0];
+    // let newDate = new Date();
+    // newDate.setHours(0, 0, 0, 0);
+    // let dateStr = newDate.toISOString().split("T")[0];
 
     // 6) กัน date ซ้ำ
     // let isDuplicate = true;
@@ -1146,7 +1139,7 @@ app.post("/reward/reset", async (req, res) => {
     if (conn) {
       try { await conn.rollback(); } catch {}
     }
-    res.status(500).json({ error: err.message });
+    res.status(500).json(err.message);
   } finally {
     if (conn) conn.release();
   }
