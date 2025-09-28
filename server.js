@@ -277,13 +277,13 @@ app.post("/lotto/random", async (req, res) => {
 
   try {
     // 0) ตรวจสอบ role ของ user
-    const [users] = await db.query("SELECT role FROM users WHERE user_id = ?", [id]);
-    if (users.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    if (String(users[0].role).toLowerCase() !== "admin") {
-      return res.status(403).json({ error: "Only admin can random lotto" });
-    }
+    // const [users] = await db.query("SELECT role FROM users WHERE user_id = ?", [id]);
+    // if (users.length === 0) {
+    //   return res.status(404).json({ error: "User not found" });
+    // }
+    // if (String(users[0].role).toLowerCase() !== "admin") {
+    //   return res.status(403).json({ error: "Only admin can random lotto" });
+    // }
 
     // 1) หางวดล่าสุด
     const [latest] = await db.query("SELECT MAX(reward_id) AS rid FROM reward");
@@ -1071,16 +1071,16 @@ app.post("/reward/reset", async (req, res) => {
   let conn;
   try {
     // 0) ตรวจสอบ role ของผู้เรียก
-    const [users] = await db.query(
-      "SELECT role FROM users WHERE user_id = ?",
-      [id]
-    );
-    if (!users.length) {
-      return res.status(404).json({ error: "ไม่เจอผู้ใช้" });
-    }
-    if (String(users[0].role).toLowerCase() !== "admin") {
-      return res.status(403).json({ error: "แอดมินเท่านั้นที่จะสร้างงวดใหม่ได้" });
-    }
+    // const [users] = await db.query(
+    //   "SELECT role FROM users WHERE user_id = ?",
+    //   [id]
+    // );
+    // if (!users.length) {
+    //   return res.status(404).json({ error: "ไม่เจอผู้ใช้" });
+    // }
+    // if (String(users[0].role).toLowerCase() !== "admin") {
+    //   return res.status(403).json({ error: "แอดมินเท่านั้นที่จะสร้างงวดใหม่ได้" });
+    // }
 
     // ใช้ทรานแซกชัน
     conn = await db.getConnection();
@@ -1112,16 +1112,16 @@ app.post("/reward/reset", async (req, res) => {
     let dateStr = newDate.toISOString().split("T")[0];
 
     // 6) กัน date ซ้ำ
-    let isDuplicate = true;
-    while (isDuplicate) {
-      const [check] = await conn.query("SELECT 1 FROM reward WHERE date = ?", [dateStr]);
-      if (check.length > 0) {
-        newDate.setDate(newDate.getDate() + 1);
-        dateStr = newDate.toISOString().split("T")[0];
-      } else {
-        isDuplicate = false;
-      }
-    }
+    // let isDuplicate = true;
+    // while (isDuplicate) {
+    //   const [check] = await conn.query("SELECT 1 FROM reward WHERE date = ?", [dateStr]);
+    //   if (check.length > 0) {
+    //     newDate.setDate(newDate.getDate() + 1);
+    //     dateStr = newDate.toISOString().split("T")[0];
+    //   } else {
+    //     isDuplicate = false;
+    //   }
+    // }
 
     // 7) insert งวดใหม่
     const [result] = await conn.query(
