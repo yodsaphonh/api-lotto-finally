@@ -660,12 +660,12 @@ app.get("/mylotto/:id", async (req, res) => {
 app.get("/lotto", async (req, res) => {
   try {
     // 1) หา reward_id ล่าสุด
-    // const [latest] = await db.query("SELECT MAX(reward_id) AS rid FROM reward");
-    // const latestRewardId = latest[0]?.rid;
+    const [latest] = await db.query("SELECT MAX(reward_id) AS rid FROM reward");
+    const latestRewardId = latest[0]?.rid;
 
-    // if (!latestRewardId) {
-    //   return res.status(404).json({ message: "ยังไม่มีงวดในระบบ" });
-    // }
+    if (!latestRewardId) {
+      return res.status(404).json({ message: "ยังไม่มีงวดในระบบ" });
+    }
 
     // 2) ดึงเฉพาะที่ยังไม่ถูกซื้อในงวดล่าสุด
     const [results] = await db.query(
