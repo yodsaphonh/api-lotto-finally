@@ -1096,9 +1096,9 @@ app.post("/reward/reset", async (req, res) => {
     // 4) template reward_data
     const template = [
       { name: "รางวัลที่ 1", tier: 1, amount: 6000000, winning: null },
-      { name: "รางวัลที่ 2", tier: 2, amount: 200000, winning: null },
-      { name: "รางวัลที่ 3", tier: 3, amount: 80000, winning: null },
-      { name: "เลขท้าย 3 ตัว", tier: 4, amount: 4000, winning: null },
+      { name: "รางวัลที่ 2", tier: 2, amount: 2000000, winning: null },
+      { name: "รางวัลที่ 3", tier: 3, amount: 1000000, winning: null },
+      { name: "เลขท้าย 3 ตัว", tier: 4, amount: 3000, winning: null },
       { name: "เลขท้าย 2 ตัว", tier: 5, amount: 2000, winning: null }
     ];
 
