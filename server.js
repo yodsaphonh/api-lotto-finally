@@ -29,6 +29,28 @@ app.get("/", (req, res) => {
   res.send("API is running 🚀");
 });
 
+//test del user
+app.delete("/users/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "invalid user_id" });
+  }
+
+  try {
+    const [result] = await db.query(
+      "DELETE FROM users WHERE user_id = ? AND LOWER(role) <> 'admin'",
+      [id]
+    );
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ message: "ไม่พบผู้ใช้ หรือผู้ใช้นั้นเป็น admin (จึงไม่ลบ)" });
+    }
+    res.json({ deleted: true, user_id: id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // health check DB
 app.get("/db-check", async (req, res) => {
@@ -452,6 +474,7 @@ app.post("/register", async (req, res) => {
 
 
 // profile
+
 app.get("/profile/:id", async (req, res) => {
   const userId = req.params.id;
   try {
@@ -462,7 +485,6 @@ app.get("/profile/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 
 // ฝากเงิน
