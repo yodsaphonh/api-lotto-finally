@@ -29,7 +29,7 @@ app.get("/", (req, res) => {
   res.send("API is running 🚀");
 });
 
-// DELETE /users/:id  — ลบ orders ของ user ก่อน แล้วค่อยลบ user (ถ้าไม่ใช่ admin)
+// DELETE /users/:id — ลบลูกทุกชั้นก่อน แล้วค่อยลบ user (ถ้าไม่ใช่ admin)
 app.delete("/users/:id", async (req, res) => {
   const uid = Number(req.params.id);
   if (!Number.isInteger(uid) || uid <= 0) {
@@ -41,20 +41,46 @@ app.delete("/users/:id", async (req, res) => {
     conn = await db.getConnection();
     await conn.beginTransaction();
 
-    // 1) ลบ orders ที่อ้าง user นี้ก่อน (กัน FK ติด)
+    // กันลบ admin
+    const [urows] = await conn.query(
+      "SELECT user_id, role FROM users WHERE user_id = ?",
+      [uid]
+    );
+    if (!urows.length) {
+      await conn.rollback();
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (String(urows[0].role).toLowerCase() === "admin") {
+      await conn.rollback();
+      return res.status(400).json({ error: "ห้ามลบแอดมิน" });
+    }
+
+    // ========== ลบ orders ของ user นี้ ==========
     const [delOrders] = await conn.query(
       "DELETE FROM orders WHERE user_id = ?",
       [uid]
     );
 
-    // 2) ค่อยลบจาก users แต่ห้ามลบ admin
+    // ตรวจว่าเหลือ orders ผูกอยู่หรือไม่ (กันพลาด)
+    const [[chk]] = await conn.query(
+      "SELECT COUNT(*) AS cnt FROM orders WHERE user_id = ?",
+      [uid]
+    );
+    if (chk.cnt > 0) {
+      await conn.rollback();
+      return res.status(409).json({
+        error: "ยังมี orders ผูกกับผู้ใช้นี้อยู่ ลบไม่หมด",
+        remain_orders: chk.cnt
+      });
+    }
+
+    // ========== ลบ user ==========
     const [delUser] = await conn.query(
       "DELETE FROM users WHERE user_id = ? AND LOWER(role) <> 'admin'",
       [uid]
     );
 
     if (delUser.affectedRows === 0) {
-      // ไม่มี user นี้ หรือเป็น admin → ยกเลิกและแจ้ง
       await conn.rollback();
       return res.status(404).json({
         message: "ไม่พบผู้ใช้ หรือผู้ใช้นั้นเป็น admin (จึงไม่ลบ)",
@@ -77,6 +103,7 @@ app.delete("/users/:id", async (req, res) => {
     if (conn) conn.release();
   }
 });
+
 
 
 // health check DB
